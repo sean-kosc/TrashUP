@@ -168,6 +168,30 @@ def dashboard():
 def map_view():
     return render_template("map.html")
 
+@app.route("/api/locations")
+def get_locations():
+    db_path = os.path.join(BASE_DIR, "..", "database", "TrashUP_images.db")
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT nom_fichier, localisation, latitude, longitude FROM images WHERE latitude IS NOT NULL AND longitude IS NOT NULL")
+        results = cursor.fetchall()
+        conn.close()
+
+        locations = []
+        for filename, localisation, lat, lon in results:
+            locations.append({
+                "filename": filename,
+                "localisation": localisation,
+                "latitude": float(lat),
+                "longitude": float(lon)
+            })
+
+        return {"status": "ok", "data": locations}, 200
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+    
+
 @app.route("/about")
 def about():
     return render_template("AboutUs.html")

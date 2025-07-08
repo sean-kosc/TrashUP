@@ -40,6 +40,26 @@
     .card-title {
       font-size: 1.25rem;
     }
+    .buttons .btn {
+      height: 70px;
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .buttons .btn:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .buttons img {
+      height: 1.5em;
+      width: 1.5em;
+    }
+    .buttons .btn .fw-bold {
+      line-height: 1.2;
+    }
+    .buttons .col-12 {
+      display: flex;
+      align-items: stretch;
+    }
     footer {
       background: linear-gradient(90deg, #38c6ff 0%, #388e4a 100%);
       color: white;
@@ -103,10 +123,20 @@
       <h4 class="mb-3">Répartition des annotations</h4>
       <canvas id="annotationChart" style="max-width: 400px; margin: auto;"></canvas>
     </div>
-    <div class="d-flex flex-wrap gap-2 justify-content-center mt-5">
-      <a href="/images" class="btn btn-primary">Voir les images</a>
-      <a href="/map" class="btn btn-success">Voir la carte</a>
-      <a href="/" class="btn btn-secondary">Retour à l'accueil</a>
+
+    <div class="buttons mt-5">
+      <div class="row g-3 justify-content-center">
+        <div class="col-12 col-md-6">
+          <a href="/images" class="btn btn-outline-dark btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+            <img src="{{ url_for('static', filename='images/voir_les_images_icone.png') }}" alt="Voir les images"> <span class="fw-bold">Voir les images</span>
+          </a>
+        </div>
+        <div class="col-12 col-md-6">
+          <a href="/map" class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+            <img src="{{ url_for('static', filename='images/carte_interractive_icone.png') }}" alt="Carte interactive"> <span class="fw-bold text-white">Carte interactive</span>
+          </a>
+        </div>
+      </div>
     </div>
   </main>
 

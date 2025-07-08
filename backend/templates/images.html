@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Images uploadées - TrashUP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f9f7;
+      display: flex;
+      flex-direction: column;
+    }
+
+    main {
+      flex: 1;
+      padding: 40px 20px;
+      max-width: 1400px;
+      margin: auto;
+    }
+
+    h2 {
+      color: #114b35;
+      font-weight: bold;
+    }
+
+    .image-column {
+      background-color: #fff;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .image-card {
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .image-card:hover {
+      transform: scale(1.02);
+    }
+
+    .image-card img {
+      max-width: 100%;
+      border-radius: 10px;
+    }
+
+    .tag {
+      padding: 5px 12px;
+      font-size: 0.85rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: bold;
+    }
+
+    .tag.vide {
+      background-color: #17a2b8;
+    }
+
+    .tag.pleine {
+      background-color: #dc3545;
+    }
+
+    footer {
+      background: linear-gradient(90deg, #38c6ff 0%, #388e4a 100%);
+      color: white;
+      text-align: center;
+      padding: 20px 10px;
+      margin-top: 60px;
+    }
+
+    .active-page {
+      font-weight: bold;
+    }
+
+    /* Overlay modale */
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.6);
+      z-index: 1050;
+    }
+
+    .modal-content-custom {
+      max-width: 90%;
+      width: 1000px;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg shadow-sm bg-white border-bottom">
+  <div class="container">
+    <a class="navbar-brand fw-bold text-success fs-3" href="/">TrashUP</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="/">Accueil</a></li>
+        <li class="nav-item"><a class="nav-link" href="/upload">Ajouter une image</a></li>
+        <li class="nav-item"><a class="nav-link active-page" href="/images">Images</a></li>
+        <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="/map">Carte</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <h2 class="text-center mb-5">Images classées par prédiction</h2>
+
+  <div class="row g-4">
+    <div class="col-12 col-lg-6">
+      <div class="image-column text-center">
+        <h4 class="text-info mb-4">
+          <img src="{{ url_for('static', filename='images/poubelle_vide.png') }}" alt="Poubelle vide" style="height: 1.5em; vertical-align: middle;">
+          Poubelles vides
+        </h4>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+          {% for img in images if img.prediction == 'vide' %}
+          <div class="col">
+            <div class="image-card" onclick='showDetails({{ img | tojson | safe }})'>
+              <img src="{{ url_for('static', filename='uploads/' + img.filename) }}" alt="Poubelle vide">
+              <div class="mt-2">
+                <small class="text-muted">
+                  {{ img.date.strftime('%d/%m/%Y - %H:%M') if img.date else "Date inconnue" }} - {{ img.localisation or "Localisation inconnue" }}
+                </small>
+                <div class="mt-1">
+                  <span class="tag vide">Vide</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="image-column text-center">
+        <h4 class="text-danger mb-4">
+          <img src="{{ url_for('static', filename='images/poubelle_pleine.png') }}" alt="Poubelle pleine" style="height: 1.5em; vertical-align: middle;">
+          Poubelles pleines
+        </h4>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+          {% for img in images if img.prediction == 'pleine' %}
+          <div class="col">
+            <div class="image-card" onclick='showDetails({{ img | tojson | safe }})'>
+              <img src="{{ url_for('static', filename='uploads/' + img.filename) }}" alt="Poubelle pleine">
+              <div class="mt-2">
+                <small class="text-muted">
+                  {{ img.date.strftime('%d/%m/%Y - %H:%M') if img.date else "Date inconnue" }} - {{ img.localisation or "Localisation inconnue" }}
+                </small>
+                <div class="mt-1">
+                  <span class="tag pleine">Pleine</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODALE DÉTAIL -->
+<div id="overlay">
+  <div class="container d-flex justify-content-center align-items-center h-100">
+    <div class="row bg-white rounded shadow-lg p-4 modal-content-custom">
+      <div class="col-md-6">
+        <img id="selected-image" src="" alt="Image sélectionnée" class="img-fluid rounded">
+      </div>
+      <div class="col-md-6">
+        <h4 class="mb-3">Détail de l'image</h4>
+        <table class="table table-sm">
+          <tbody>
+            <tr><th>Nom du fichier</th><td id="nom_fichier"></td></tr>
+            <tr><th>Date d'upload</th><td id="date_upload"></td></tr>
+            <tr><th>Annotation</th><td id="prediction"></td></tr>
+            <tr><th>Taille (Ko)</th><td id="taille"></td></tr>
+            <tr><th>Dimensions (px)</th><td id="dimensions"></td></tr>
+            <tr><th>Couleur moyenne (R, V, B)</th><td id="moyenne"></td></tr>
+            <tr><th>Luminosité</th><td id="luminosite"></td></tr>
+            <tr><th>Contraste</th><td id="contraste"></td></tr>
+            <tr><th>Contours</th><td id="contours"></td></tr>
+            <tr><th>Localisation</th><td id="localisation"></td></tr>
+          </tbody>
+        </table>
+        <div class="text-end">
+          <button class="btn btn-outline-secondary mt-2" onclick="closeDetails()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p class="mb-1">&copy; 2025 TrashUP. Tous droits réservés.</p>
+  <p class="mb-1"><a href="#" class="text-white text-decoration-underline">À propos</a> | Projet étudiant – Master Green IT</p>
+  <small>Plateforme de suivi intelligent des poubelles publiques pour la prévention des dépôts sauvages.</small>
+</footer>
+
+<script>
+  function showDetails(img) {
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("selected-image").src = `/static/uploads/${img.filename}`;
+    document.getElementById("nom_fichier").textContent = img.filename;
+    document.getElementById("date_upload").textContent = new Date(img.date).toLocaleString("fr-FR");
+    document.getElementById("prediction").textContent = img.prediction;
+    document.getElementById("taille").textContent = img.taille_fichier_Ko + " Ko";
+    document.getElementById("dimensions").textContent = img.largeur + " x " + img.hauteur;
+    document.getElementById("moyenne").textContent = `${img.moyenne_R}, ${img.moyenne_V}, ${img.moyenne_B}`;
+    document.getElementById("luminosite").textContent = img.luminosite;
+    document.getElementById("contraste").textContent = img.contraste;
+    document.getElementById("contours").textContent = img.densite_contours;
+    document.getElementById("localisation").textContent = img.localisation || "Inconnue";
+  }
+
+  function closeDetails() {
+    document.getElementById("overlay").style.display = "none";
+  }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

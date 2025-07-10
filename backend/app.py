@@ -5,7 +5,7 @@ from extractor import traiter_et_enregistrer_image
 import traceback
 from datetime import datetime
 import sqlite3
-
+from collections import defaultdict, Counter
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -71,12 +71,11 @@ def corriger_prediction():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    cursor.execute("UPDATE images SET prediction = ? WHERE nom_fichier = ?", (new_prediction, filename))
+    cursor.execute("UPDATE images SET prediction = ?, correction = 1 WHERE nom_fichier = ?", (new_prediction, filename))
     conn.commit()
     conn.close()
 
     return redirect(url_for("upload_image"))
-
 
 @app.route("/")
 def index():
@@ -140,29 +139,96 @@ def images():
 
     return render_template("images.html", images=images)
 
+@app.route("/delete_image", methods=["POST"])
+def delete_image():
+    filename = request.form.get("filename")
+    if not filename:
+        return redirect("/images")
+
+    try:
+        # Supprimer l'entrée de la base
+        db_path = os.path.join(BASE_DIR, "..", "database", "TrashUP_images.db")
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM images WHERE nom_fichier = ?", (filename,))
+        conn.commit()
+        conn.close()
+
+        # Supprimer le fichier du dossier
+        filepath = os.path.join(app.static_folder, "uploads", filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+        return redirect("/images")
+
+    except Exception as e:
+        return f"<pre>Erreur lors de la suppression : {e}</pre>", 500
+    
 
 @app.route("/dashboard")
 def dashboard():
     db_path = os.path.join(BASE_DIR, "..", "database", "TrashUP_images.db")
-    total = dirty = clean = 0
 
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT prediction FROM images")
-        all_predictions = cursor.fetchall()
 
-        for (pred,) in all_predictions:
-            if pred == "dirty":
-                dirty += 1
-            elif pred == "clean":
-                clean += 1
-        total = len(all_predictions)
+        cursor.execute("SELECT prediction, date_upload, localisation, moyenne_R, moyenne_V, moyenne_B, luminosite, contraste, densite_contours, correction FROM images")
+        rows = cursor.fetchall()
+
+        total = len(rows)
+        dirty = sum(1 for r in rows if r[0] == "dirty")
+        clean = sum(1 for r in rows if r[0] == "clean")
+        corrected = sum(1 for r in rows if r[-1] == 1)
+
+        histogram_data = defaultdict(int)
+        localisation_counter = Counter()
+
+        for row in rows:
+            pred, date_str, loc, *_ = row
+            try:
+                date_obj = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
+            except:
+                continue
+            day_key = date_obj.strftime("%Y-%m-%d")
+            histogram_data[day_key] += 1
+            localisation_counter[loc] += 1
+
+        # Dernières images avec infos complètes
+        cursor.execute("""
+        SELECT nom_fichier, date_upload, localisation, prediction
+        FROM images
+        ORDER BY date_upload DESC
+        LIMIT 5
+        """)
+        latest = cursor.fetchall()
+        latest_images = []
+        for row in latest:
+            try:
+                formatted_date = datetime.strptime(row[1], "%Y-%m-%dT%H:%M:%S.%f").strftime("%d/%m/%Y - %H:%M")
+            except:
+                formatted_date = "-"
+            latest_images.append({
+                "filename": row[0],
+                "date": formatted_date,
+                "localisation": row[2] or "-",
+                "prediction": row[3] or "unknown"
+            })
+
         conn.close()
+
+        return render_template("dashboard.html",
+                               total=total,
+                               dirty=dirty,
+                               clean=clean,
+                               corrected=corrected,
+                               histogram_data=dict(histogram_data),
+                               latest_images=latest_images,
+                               localisation_counter=dict(localisation_counter))
+
     except Exception as e:
         return f"<pre>Erreur : {e}</pre>", 500
 
-    return render_template("dashboard.html", total=total, dirty=dirty, clean=clean)
 
 @app.route("/map")
 def map_view():
@@ -174,23 +240,23 @@ def get_locations():
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT nom_fichier, localisation, latitude, longitude FROM images WHERE latitude IS NOT NULL AND longitude IS NOT NULL")
+        cursor.execute("SELECT nom_fichier, localisation, latitude, longitude, prediction FROM images WHERE latitude IS NOT NULL AND longitude IS NOT NULL")
         results = cursor.fetchall()
         conn.close()
 
         locations = []
-        for filename, localisation, lat, lon in results:
+        for filename, localisation, lat, lon, prediction in results:
             locations.append({
                 "filename": filename,
                 "localisation": localisation,
                 "latitude": float(lat),
-                "longitude": float(lon)
+                "longitude": float(lon),
+                "prediction": prediction
             })
 
         return {"status": "ok", "data": locations}, 200
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
-    
 
 @app.route("/about")
 def about():
@@ -204,4 +270,3 @@ if __name__ == "__main__":
         return f"<pre>{traceback.format_exc()}</pre>", 500
 
     app.run(debug=True)
-

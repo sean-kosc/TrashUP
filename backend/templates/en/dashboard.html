@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - TrashUP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f4f9f7; }
+    .dashboard-container { max-width: 1200px; margin: auto; padding: 40px 20px; }
+    footer { background: linear-gradient(90deg, #38c6ff 0%, #388e4a 100%); color: white; text-align: center; padding: 20px 10px; margin-top: 60px; }
+    .thumbnail { width: 140px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc; }
+    .section-title { margin-top: 60px; margin-bottom: 10px; }
+    .section-desc { font-size: 0.95rem; color: #555; }
+    .gallery-item { text-align: center; padding: 10px; margin: 10px; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; }
+    .gallery-date { font-size: 0.85rem; color: #666; }
+    .badge-empty { background-color: #0dcaf0; }
+    .badge-full { background-color: #dc3545; }
+    .navbar { background-color: white; border-bottom: 1px solid #eee; padding-top: 1rem; padding-bottom: 1rem; }
+    .navbar-brand { font-weight: bold; font-size: 1.75rem; color: #1e824c !important; }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg shadow-sm">
+  <div class="container">
+    <a class="navbar-brand" href="/">TrashUP</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/upload">Upload an image</a></li>
+        <li class="nav-item"><a class="nav-link" href="/images">Images</a></li>
+        <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="/map">Map</a></li>
+        <li class="nav-item">
+          {% if session.get('lang', 'fr') == 'fr' %}
+            <a class="nav-link" href="{{ url_for('switch_lang', lang='en', next=request.path) }}">🇬🇧 English</a>
+          {% else %}
+            <a class="nav-link" href="{{ url_for('switch_lang', lang='fr', next=request.path) }}"><img src="{{ url_for('static', filename='images/fr.png') }}" alt="Français" style="height:1.2em;width:auto;vertical-align:middle;"> </a>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="dashboard-container">
+  <h2 class="fw-bold text-success mb-4">TrashUP Dashboard</h2>
+
+  <div class="row mb-4">
+    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Total images</h5><p class="fw-bold display-6 text-primary">{{ total }}</p></div></div></div>
+    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Full bins</h5><p class="fw-bold display-6 text-danger">{{ dirty }}</p></div></div></div>
+    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Empty bins</h5><p class="fw-bold display-6 text-info">{{ clean }}</p></div></div></div>
+    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Manual corrections</h5><p class="fw-bold display-6 text-warning">{{ corrected }}</p></div></div></div>
+  </div>
+
+  <h4 class="section-title">Mini gallery (last 5 images)</h4>
+  <p class="section-desc">Quick overview of the last analyzed bins, with their date, location and prediction.</p>
+  <div class="d-flex flex-row justify-content-start flex-wrap">
+    {% for img in latest_images %}
+    <div class="gallery-item">
+      <img class="thumbnail mb-2" src="/static/uploads/{{ img.filename }}" alt="{{ img.filename }}">
+      <p class="gallery-date">{{ img.date }} - {{ img.localisation }}</p>
+      <span class="badge {{ 'badge-empty' if img.prediction == 'clean' else 'badge-full' }}">
+        {{ 'Empty' if img.prediction == 'clean' else 'Full' }}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h4 class="section-title">Daily uploads histogram</h4>
+  <p class="section-desc">See how many images were uploaded each day on the platform.</p>
+  <canvas id="histogramChart" height="100"></canvas>
+
+  <h4 class="section-title">Distribution by location</h4>
+  <p class="section-desc">Most frequent image locations. Gives an overview of monitored areas.</p>
+  <canvas id="localisationChart" height="100"></canvas>
+</main>
+
+<footer>
+  <p class="mb-1">&copy; 2025 TrashUP. All rights reserved.</p>
+  <p class="mb-1"><a href="#" class="text-white text-decoration-underline">About</a> | Student project – Master Green IT</p>
+  <small>Smart monitoring platform for public trash bins to prevent illegal dumping.</small>
+</footer>
+
+<script>
+  const histogramData = {{ histogram_data | tojson }};
+  const localisationData = {{ localisation_counter | tojson }};
+
+  const ctx1 = document.getElementById('histogramChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(histogramData),
+      datasets: [{
+        label: "Uploads per day",
+        data: Object.values(histogramData),
+        backgroundColor: '#198754'
+      }]
+    },
+    options: {
+      scales: { y: { beginAtZero: true } },
+      responsive: true
+    }
+  });
+
+  const ctx2 = document.getElementById('localisationChart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(localisationData),
+      datasets: [{
+        label: 'Images by location',
+        data: Object.values(localisationData),
+        backgroundColor: '#0d6efd'
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      scales: { x: { beginAtZero: true } },
+      responsive: true
+    }
+  });
+</script>
+</body>
+</html>

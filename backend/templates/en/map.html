@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Carte interactive - TrashUP</title>
+  <title>Interactive Map - TrashUP</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -87,16 +87,16 @@
     </button>
     <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
       <ul class="navbar-nav">
-        <li class="nav-item"><a class="nav-link" href="/">Accueil</a></li>
-        <li class="nav-item"><a class="nav-link" href="/upload">Ajouter une image</a></li>
+        <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/upload">Add Image</a></li>
         <li class="nav-item"><a class="nav-link" href="/images">Images</a></li>
         <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/map">Carte</a></li>
+        <li class="nav-item"><a class="nav-link" href="/map">Map</a></li>
         <li class="nav-item">
           {% if session.get('lang', 'fr') == 'fr' %}
-            <a class="nav-link" href="{{ url_for('switch_lang', lang='en', next=request.path) }}" aria-label="Switch to English"><img src="{{ url_for('static', filename='images/gb.png') }}" alt="English" style="height:1.2em;width:auto;vertical-align:middle;" /></a>
+            <a class="nav-link" href="{{ url_for('switch_lang', lang='en', next=request.path) }}">🇬🇧 English</a>
           {% else %}
-            <a class="nav-link" href="{{ url_for('switch_lang', lang='fr', next=request.path) }}">🇫🇷 Français</a>
+            <a class="nav-link" href="{{ url_for('switch_lang', lang='fr', next=request.path) }}"><img src="{{ url_for('static', filename='images/fr.png') }}" alt="Français" style="height:1.2em;width:auto;vertical-align:middle;"> </a>
           {% endif %}
         </li>
       </ul>
@@ -105,21 +105,21 @@
 </nav>
 
 <main>
-  <h1>Carte interactive</h1>
-  <p>Explorez la carte pour voir où les images ont été prises. Cliquez sur un point pour voir la photo associée.</p>
+  <h1>Interactive Map</h1>
+  <p>Explore the map to see where the images were taken. Click a marker to view the associated photo.</p>
 
   <div class="map-container">
     <div id="map"></div>
     <div class="eboueur">
-      <img src="{{ url_for('static', filename='images/eboueur_map.png') }}" alt="Éboueur TrashUP">
+      <img src="{{ url_for('static', filename='images/eboueur_map.png') }}" alt="TrashUP Worker">
     </div>
   </div>
 </main>
 
 <footer>
-  <p class="mb-1">&copy; 2025 TrashUP. Tous droits réservés.</p>
-  <p class="mb-1"><a href="#" class="text-white text-decoration-underline">À propos</a> | Projet étudiant – Master Green IT</p>
-  <small>Plateforme de suivi intelligent des poubelles publiques pour la prévention des dépôts sauvages.</small>
+  <p class="mb-1">&copy; 2025 TrashUP. All rights reserved.</p>
+  <p class="mb-1"><a href="#" class="text-white text-decoration-underline">About</a> | Student Project – Master Green IT</p>
+  <small>Smart public bin monitoring platform for illegal dumping prevention.</small>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -156,7 +156,7 @@
           if (point.latitude && point.longitude) {
             const icon = point.prediction === 'dirty' ? redIcon : blueIcon;
             const marker = L.marker([point.latitude, point.longitude], { icon }).addTo(map);
-            let popupContent = `<strong>${point.localisation || 'Adresse inconnue'}</strong>`;
+            let popupContent = `<strong>${point.localisation || 'Unknown address'}</strong>`;
             if (point.filename) {
               popupContent += `<br><img src="/static/uploads/${point.filename}" style="max-width:150px; margin-top:8px;" />`;
             }
@@ -164,11 +164,11 @@
           }
         });
       } else {
-        console.error("Erreur API :", response.message);
+        console.error("API error:", response.message);
       }
     })
     .catch(error => {
-      console.error("Erreur lors du chargement des données :", error);
+      console.error("Error loading data:", error);
     });
 </script>
 

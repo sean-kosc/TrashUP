@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, session
 from werkzeug.utils import secure_filename
 import os
 from extractor import traiter_et_enregistrer_image
@@ -9,10 +9,12 @@ from collections import defaultdict, Counter
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
 app = Flask(
     __name__,
     static_folder=os.path.join(BASE_DIR, 'static'),
     template_folder=os.path.join(BASE_DIR, 'templates'))
+app.secret_key = "change_this_secret_key"
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static/uploads')
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
@@ -24,17 +26,18 @@ last_prediction = None
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 @app.route("/upload", methods=["GET", "POST"])
 def upload_image():
     global last_uploaded_image, last_prediction
 
     if request.method == "POST":
         if "image" not in request.files:
-            return render_template("upload_template.html", erreur="Aucun fichier reçu.")
+            return render_template(get_template_name("upload_template.html"), erreur="Aucun fichier reçu.")
 
         file = request.files["image"]
         if file.filename == "":
-            return render_template("upload_template.html", erreur="Nom de fichier vide.")
+            return render_template(get_template_name("upload_template.html"), erreur="Nom de fichier vide.")
 
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
@@ -58,7 +61,7 @@ def upload_image():
             except Exception as e:
                 return f"<pre>Erreur : {e}\n\n{traceback.format_exc()}</pre>", 500
 
-    return render_template("upload_template.html",
+    return render_template(get_template_name("upload_template.html"),
                            uploaded_image=last_uploaded_image,
                            prediction=last_prediction)
 
@@ -77,9 +80,10 @@ def corriger_prediction():
 
     return redirect(url_for("upload_image"))
 
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template(get_template_name("index.html"))
 
 @app.route("/images")
 def images():
@@ -137,7 +141,7 @@ def images():
     except Exception as e:
         return f"<pre>Erreur de lecture de la base : {e}</pre>", 500
 
-    return render_template("images.html", images=images)
+    return render_template(get_template_name("images.html"), images=images)
 
 @app.route("/delete_image", methods=["POST"])
 def delete_image():
@@ -217,7 +221,7 @@ def dashboard():
 
         conn.close()
 
-        return render_template("dashboard.html",
+        return render_template(get_template_name("dashboard.html"),
                                total=total,
                                dirty=dirty,
                                clean=clean,
@@ -230,9 +234,10 @@ def dashboard():
         return f"<pre>Erreur : {e}</pre>", 500
 
 
+
 @app.route("/map")
 def map_view():
-    return render_template("map.html")
+    return render_template(get_template_name("map.html"))
 
 @app.route("/api/locations")
 def get_locations():
@@ -258,9 +263,27 @@ def get_locations():
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
+
 @app.route("/about")
 def about():
-    return render_template("AboutUs.html")
+    return render_template(get_template_name("AboutUs.html"))
+
+# Utilitaire pour choisir le template selon la langue
+def get_template_name(base_name):
+    lang = session.get('lang', 'fr')
+    if lang == 'en':
+        # Toujours utiliser le slash pour les templates Flask/Jinja
+        en_path = f'en/{base_name}'
+        if os.path.exists(os.path.join(app.template_folder, 'en', base_name)):
+            return en_path
+    return base_name
+
+# Route pour changer la langue
+@app.route("/switch_lang/<lang>")
+def switch_lang(lang):
+    session['lang'] = lang
+    next_page = request.args.get("next") or "/"
+    return redirect(next_page)
 
 if __name__ == "__main__":
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)

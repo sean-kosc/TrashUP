@@ -52,13 +52,19 @@
 
   <div class="row mb-4">
     <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Total images</h5><p class="fw-bold display-6 text-primary">{{ total }}</p></div></div></div>
-    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Full bins</h5><p class="fw-bold display-6 text-danger">{{ dirty }}</p></div></div></div>
-    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Empty bins</h5><p class="fw-bold display-6 text-info">{{ clean }}</p></div></div></div>
+    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Full images</h5><p class="fw-bold display-6 text-danger">{{ dirty }}</p></div></div></div>
+    <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Empty images</h5><p class="fw-bold display-6 text-info">{{ clean }}</p></div></div></div>
     <div class="col-md-3"><div class="card text-center shadow-sm"><div class="card-body"><h5>Manual corrections</h5><p class="fw-bold display-6 text-warning">{{ corrected }}</p></div></div></div>
   </div>
 
+  <h4 class="section-title">Annotation distribution</h4>
+  <p class="section-desc">Proportion of detected full and empty images.</p>
+  <div style="max-width: 350px; margin: auto;">
+    <canvas id="repartitionChart"></canvas>
+  </div>
+
   <h4 class="section-title">Mini gallery (last 5 images)</h4>
-  <p class="section-desc">Quick overview of the last analyzed bins, with their date, location and prediction.</p>
+  <p class="section-desc">Quick preview of the last analyzed bins, with their date, location, and prediction.</p>
   <div class="d-flex flex-row justify-content-start flex-wrap">
     {% for img in latest_images %}
     <div class="gallery-item">
@@ -77,7 +83,16 @@
 
   <h4 class="section-title">Distribution by location</h4>
   <p class="section-desc">Most frequent image locations. Gives an overview of monitored areas.</p>
-  <canvas id="localisationChart" height="100"></canvas>
+  <label for="villeFilter" class="form-label mt-4">Choose a city:</label>
+  <select id="villeFilter" class="form-select mb-3" onchange="updateLocalisationChart()">
+    <option value="all">All cities</option>
+    {% for loc in localisation_counter.keys() | sort %}
+      <option value="{{ loc }}">{{ loc }}</option>
+    {% endfor %}
+  </select>
+  <div style=" overflow-y: auto;">
+    <canvas id="localisationChart" height="400"></canvas>
+  </div>
 </main>
 
 <footer>
@@ -108,7 +123,8 @@
   });
 
   const ctx2 = document.getElementById('localisationChart').getContext('2d');
-  new Chart(ctx2, {
+
+  let localisationChart = new Chart(ctx2, {
     type: 'bar',
     data: {
       labels: Object.keys(localisationData),
@@ -122,6 +138,54 @@
       indexAxis: 'y',
       scales: { x: { beginAtZero: true } },
       responsive: true
+    }
+  });
+
+  function updateLocalisationChart() {
+    const selected = document.getElementById('villeFilter').value;
+    let labels, data;
+
+    if (selected === "all") {
+      labels = Object.keys(localisationData);
+      data = Object.values(localisationData);
+    } else {
+      labels = [selected];
+      data = [localisationData[selected]];
+    }
+
+    localisationChart.data.labels = labels;
+    localisationChart.data.datasets[0].data = data;
+    localisationChart.update();
+  }
+
+  const ctx3 = document.getElementById('repartitionChart').getContext('2d');
+  new Chart(ctx3, {
+    type: 'doughnut',
+    data: {
+      labels: ['Full', 'Empty'],
+      datasets: [{
+        data: [{{ dirty }}, {{ clean }}],
+        backgroundColor: ['#dc3545', '#0dcaf0'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed;
+              const total = context.chart._metasets[0].total;
+              const percentage = ((value / total) * 100).toFixed(1) + '%';
+              return `${label}: ${value} (${percentage})`;
+            }
+          }
+        }
+      }
     }
   });
 </script>
